@@ -1,8 +1,10 @@
 import rclpy #importing ros
+# import rospy #using ros time
 from rclpy.node import Node
 from std_msgs.msg import String #datatype needed for ros to understand
 from geometry_msgs.msg import Twist, Vector3 #for the neato
 import time
+
 class drive_square(Node):
     def __init__(self):
         super().__init__("publisher_node") #call parent class
@@ -20,16 +22,16 @@ class drive_square(Node):
         # msg = String()
         # msg.data = 'hello'
         straight = Twist(linear=Vector3(x=1.0,y=0.0,z=0.0),angular=Vector3(x=0.0,y=0.0,z=0.0))
-        turn = Twist(linear=Vector3(x=0.0,y=0.0,z=0.0),angular=Vector3(x=0.0,y=0.0,z=1.0))
+        turn = Twist(linear=Vector3(x=0.0,y=0.0,z=0.0),angular=Vector3(x=0.0,y=0.0,z=-0.5))
         #msg = Twist
         #msg.lin_vel =
 
         while (time.time()-prev < 1):
             self.publisher.publish(straight)
         prev = time.time()
-        while (time.time()-prev < 1):
+        while (time.time()-prev < 3.14):
             self.publisher.publish(turn)
-        
+
 
 
 def main(args=None):

@@ -21,12 +21,12 @@ class drive_square(Node):
         # msg = String(data = 'hello') #each msg has a label to go with, String is a datatype
         # msg = String()
         # msg.data = 'hello'
-        straight = Twist(linear=Vector3(x=1.0,y=0.0,z=0.0),angular=Vector3(x=0.0,y=0.0,z=0.0))
+        straight = Twist(linear=Vector3(x=0.5,y=0.0,z=0.0),angular=Vector3(x=0.0,y=0.0,z=0.0))
         turn = Twist(linear=Vector3(x=0.0,y=0.0,z=0.0),angular=Vector3(x=0.0,y=0.0,z=-0.5))
         #msg = Twist
         #msg.lin_vel =
 
-        while (time.time()-prev < 1):
+        while (time.time()-prev < 2):
             self.publisher.publish(straight)
         prev = time.time()
         while (time.time()-prev < 3.14):

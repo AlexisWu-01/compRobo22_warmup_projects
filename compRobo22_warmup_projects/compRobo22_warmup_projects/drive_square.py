@@ -4,6 +4,7 @@ from rclpy.node import Node
 from std_msgs.msg import String #datatype needed for ros to understand
 from geometry_msgs.msg import Twist, Vector3 #for the neato
 import time
+import math
 
 class drive_square(Node):
     def __init__(self):
@@ -16,16 +17,19 @@ class drive_square(Node):
 
     def send_msg(self):
         straight = Twist()
-        straight.linear.x = 0.5
+        straight.linear.x = 0.1
         turn = Twist()
-        turn.angular.z = 0.5
+        turn.angular.z = 0.25
+        stop = Twist()
         if self.start_time is None:
             self.start_time = time.time()
         # record the current time
         elapsed = time.time() - self.start_time
-        if elapsed < 2:
+        if elapsed < 10:
             self.publisher.publish(straight)
-        elif elapsed < 5.14:
+        # elif elapsed < 2.2:
+        #     self.publisher.publish(stop)
+        elif elapsed < 16.28:
             self.publisher.publish(turn)
         else:
             self.start_time = time.time()

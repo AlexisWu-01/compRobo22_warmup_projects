@@ -23,8 +23,7 @@ class WallFollower(Node):
         self.x_axis = -1
         self.y_axis = -1
         self.max_range = -1
-        self.cur_x = None
-        self.cur_y = None
+        self.target_angle = None
         self.found = False
 
     
@@ -62,27 +61,38 @@ class WallFollower(Node):
    
     
     def approach_wall(self):
-            if self.x_axis == self.target_distance:
+            if abs(self.x_axis - self.target_distance) < 1e-3:
+                print('close enough!')
                 self.turn_square = True
-            msg = Twist()
-            msg.linear.x = self.Kp*(self.x_axis - self.target_distance)
-            self.vel_pub.publish(msg)
+            else:
+                msg = Twist()
+                msg.linear.x = self.Kp*(self.x_axis - self.target_distance)
+                self.vel_pub.publish(msg)
+                print(self.x_axis-self.target_distance)
+                
+
+    def turn_vertical(self):
+        if not self.target_angle:
+            self.target_angle = math.atan(self.x_axis/self.y_axis)
+        turn_time = self.target_angle/self.angular_vel
+        if self.start_time is None:
+            self.start_time = time.time()
+        elapse = time.time()- self.start_time
+        if elapse < turn_time:
+            print(elapse,turn_time)
+            self.turn_neoto()
+        else:
+            print('perfect angle!')
+            self.approach = True
+            self.start_time = None
 
     def run_loop(self):
+
         if self.parallel:
             #goal achieved, just follow the line
             print('following wall!')
             self.go_straight()
 
-        elif not self.found and (self.x_axis > self.max_range or self.y_axis > self.max_range):
-            # one of x and y axis is not facing the wall
-            #turn towards wall
-            print('finding wall')
-            self.turn_neoto()
-
-        elif self.approach:
-            print('going near the wall')
-            self.approach_wall()
         elif self.turn_square:
             print('turns parallel')
             if self.start_time is None:
@@ -93,24 +103,24 @@ class WallFollower(Node):
             else:
                 self.parallel = True
 
-        elif self.x_axis < self.max_range and self.y_axis < self.max_range:
+        elif self.approach:
+            print('going near the wall')
+            self.approach_wall()
+
+
+        elif (self.x_axis < self.max_range and self.y_axis < self.max_range) or self.found:
             print('turning vertical')
+            self.turn_vertical()
             self.found = True
-            if not self.cur_x:
-                self.cur_x = self.x_axis
-                self.cur_y = self.y_axis
-            target_angle = math.atan(self.cur_x/self.cur_y)
-            #turn vertical to wall
-            turn_time = target_angle/self.angular_vel
-            if self.start_time is None:
-                self.start_time = time.time()
-            elapse = time.time()- self.start_time
-            if elapse < turn_time:
-                self.turn_neoto()
-            else:
-                print('perfect angle!')
-                self.approach = True
-                self.start_time = None
+
+
+        elif (self.x_axis > self.max_range and self.y_axis > self.max_range) or (not self.found and (self.x_axis > self.max_range or self.y_axis > self.max_range)):
+            self.found = False
+            # one of x and y axis is not facing the wall
+            #turn towards wall
+            print('finding wall')
+            self.turn_neoto()
+
 
 
 

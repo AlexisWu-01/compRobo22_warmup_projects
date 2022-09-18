@@ -13,9 +13,9 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='alexiswu',
-    maintainer_email='alexiswu@todo.todo',
-    description='TODO: Package description',
+    maintainer='Alexis',
+    maintainer_email='xwu1@olin.edu',
+    description='Warmup Project for CompRobo22',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={

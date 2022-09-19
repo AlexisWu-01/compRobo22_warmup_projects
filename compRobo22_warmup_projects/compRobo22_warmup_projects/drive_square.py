@@ -3,7 +3,6 @@ import rclpy #importing ros
 from rclpy.node import Node
 from std_msgs.msg import String #datatype needed for ros to understand
 from geometry_msgs.msg import Twist, Vector3 #for the neato
-# import time
 from neato2_interfaces.msg import Bump
 from nav_msgs.msg import Odometry
 from .angle_helpers import euler_from_quaternion

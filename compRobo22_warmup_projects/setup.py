@@ -13,15 +13,17 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='phillip',
-    maintainer_email='phillip.post@gmail.com',
-    description='TODO: Package description',
+    maintainer='Alexis',
+    maintainer_email='xwu1@olin.edu',
+    description='Warmup Project for CompRobo22',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'drive_square = compRobo22_warmup_projects.drive_square:main'
-            # 'subscriber = warmup_projects.subscriber:main'
+            'drive_square = compRobo22_warmup_projects.drive_square:main',
+            'wall_follower = compRobo22_warmup_projects.wall_follower:main',
+            'person_follower = compRobo22_warmup_projects.person_follower:main'
+
         ],
     },
 )

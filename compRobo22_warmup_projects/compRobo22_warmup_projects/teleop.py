@@ -42,11 +42,11 @@ class teleop():
 
         # create the initial loading screen
         print("_____Controls_____\n" +
-               "        ^         \n" +
-               "  <\ Q  W  E />   \n" +
-               "    <  A D  >     \n" +
-               "        S         \n" +
-               "        v         ")
+               "        ^         |U Person Follower  \n" +
+               "  <\ Q  W  E />   |I Wall Follower    \n" +
+               "    <  A D  >     |O Obstacle Avoider \n" +
+               "        S         |P Drive Square     \n" +
+               "        v         |M Escape             ")
 
     def listen(self):
         """

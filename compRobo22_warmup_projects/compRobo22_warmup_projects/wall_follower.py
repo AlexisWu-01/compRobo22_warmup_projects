@@ -1,138 +1,153 @@
-import rclpy
+from turtle import position
+import rclpy #importing ros
 from rclpy.node import Node
+from std_msgs.msg import String #datatype needed for ros to understand
+from geometry_msgs.msg import Twist, Vector3 #for the neato
+from neato2_interfaces.msg import Bump
 from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
+from .angle_helpers import euler_from_quaternion
 import math
-import time
 
-class WallFollower(Node):
+
+class wall_follower(Node):
     def __init__(self):
-        super().__init__('distance_emergency_stop')
-        self.create_timer(0.1, self.run_loop)
-        self.create_subscription(LaserScan, 'scan', self.process_scan, 10)
-        self.vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)
-        self.distance_to_obstacle = None
-        self.Kp = 0.4
-        self.target_distance = 0.5
-        self.angular_vel = 0.1
-        self.linear_vel = 0.1
-        self.parallel = False
-        self.start_time = None
-        self.approach = False
-        self.turn_square = False
-        self.x_axis = -1
-        self.y_axis = -1
-        self.max_range = -1
+        super().__init__("publisher_node") #call parent class
+    
+        timer_period = 0.05
+        self.create_subscription(LaserScan,'scan',self.process_scan,10)
+        self.create_subscription(Bump, 'bump', self.process_bump, 10)
+        self.create_subscription(Odometry,"odom",self.check_odom,10 )
+        self.publisher = self.create_publisher(Twist,"cmd_vel",10)#name of topic,"cmd_vel" for moving; queue size
+        self.timer = self.create_timer(timer_period,self.send_msg) #runs at timer_period, then call the call back function
+        self.current_scan = []
+        self.kp = 0.4
+        self.CONSTANT_ANGULAR_SPEED = 0.5
+        self.CONSTANT_LINEAR_SPEED = 0.5
+
+        self.shortest_angle = None
+        self.shortest_distance = float('inf')
+        self.max_range = float('inf')
+        self.current_position = None
+        self.bumper_active = False
+        self.callibration = False
+        self.to_turn = True
+        self.to_go = False
         self.target_angle = None
-        self.found = False
+        self.target_distance = None
+        self.go_parallel = False
+        self.turn_vertical = False
 
-    
-    
-
-    # def run_loop(self):
-    #     msg = Twist()
-    #     if self.distance_to_obstacle is None:
-    #         msg.linear.x = 0.1
-    #     else:
-    #         msg.linear.x = self.Kp*(self.distance_to_obstacle - self.target_distance)
-    #     self.vel_pub.publish(msg)
-
-    def stop_neato(self):
-        #sets all neato velocities to 0
-        msg = Twist()
-        self.vel_pub.publish(msg)
-
-    def turn_neoto(self):
-        #ask neato to turn
-        msg = Twist()
-        msg.angular.z = self.angular_vel # future improvement: add proportional speed
-        self.vel_pub.publish(msg)
-            
-    def go_straight(self):
-        msg = Twist()
-        msg.linear.x = self.linear_vel
-        self.vel_pub.publish(msg)
-
+        
 
     def process_scan(self, msg):
-        self.x_axis = msg.ranges[0]
-        self.y_axis = msg.ranges[90]
+        self.current_scan = msg.ranges
         self.max_range = msg.range_max
-   
-    
-    def approach_wall(self):
-            if abs(self.x_axis - self.target_distance) < 1e-3:
-                print('close enough!')
-                self.turn_square = True
-            else:
-                msg = Twist()
-                msg.linear.x = self.Kp*(self.x_axis - self.target_distance)
-                self.vel_pub.publish(msg)
-                print(self.x_axis-self.target_distance)
-                
+        # print(self.current_scan)
 
-    def turn_vertical(self):
-        if not self.target_angle:
-            self.target_angle = math.atan(self.x_axis/self.y_axis)
-        turn_time = self.target_angle/self.angular_vel
-        if self.start_time is None:
-            self.start_time = time.time()
-        elapse = time.time()- self.start_time
-        if elapse < turn_time:
-            print(elapse,turn_time)
-            self.turn_neoto()
+    def process_bump(self, msg):
+        self.bumper_active = (msg.left_front == 1 or \
+                              msg.left_side == 1 or \
+                              msg.right_front ==1 or \
+                              msg.right_side == 1)
+
+    def check_odom (self,msg):
+        self.current_position = msg.pose.pose.position
+        self.current_orientation = euler_from_quaternion(msg.pose.pose.orientation.x,
+                                    msg.pose.pose.orientation.y,
+                                    msg.pose.pose.orientation.z,
+                                    msg.pose.pose.orientation.w)
+
+    def get_coordinates(self,distance,index):
+        delta_x = distance*math.cos(index)
+        delta_y = distance*math.sin(index)
+        return delta_x,delta_y
+
+    def find_best_angle(self):
+        try:
+            n = len(self.current_scan)
+            cnt = 0
+            shortest_distance = self.shortest_distance
+            shortest_angle = self.shortest_angle
+            for i in range(n):
+                if  0 < self.current_scan[i] < self.max_range:
+                    cnt += 1
+                    if shortest_distance > self.current_scan[i]:
+                        shortest_distance = self.current_scan[i]
+                        shortest_angle = i
+                else:
+                    if cnt  >= 90: 
+                        self.shortest_distance = shortest_distance - .3
+                        self.shortest_angle = math.radians(shortest_angle)
+                        break
+                        #at least 90 consecutive valid ranges should be there in case it is not a wall (meaning the neato should be within 1.8m to the wall to be detected)
+                    else:
+                        sum_delta_x, sum_delta_y, cnt = 0, 0, 0
+                        shortest_distance = float('inf')
+                        shortest_angle = None
+           
+        except:
+            pass
+
+    def send_msg(self):
+        msg = Twist()
+        if not self.shortest_angle:
+            self.find_best_angle()
+            if not self.shortest_angle:
+                print('no wall detected!')
         else:
-            print('perfect angle!')
-            self.approach = True
-            self.start_time = None
+            if self.to_turn:
+                if not self.target_angle:
+                    self.target_angle = self.shortest_angle + self.current_orientation[2]
+                if self.turn_vertical:
+                    self.target_angle = self.current_orientation[2] + math.pi/2
+                    self.go_parallel = True
+                    self.turn_vertical = False
+                    print('check here:',self.target_angle - self.current_orientation[2])
+                angle_to_turn = self.target_angle - self.current_orientation[2]
+                print('angle to turn:',angle_to_turn)
+                if abs(angle_to_turn) < 1e-2:
+                    # already facing best angle
+                    msg.angular.z = 0.0
+                    self.to_go = True
+                    self.to_turn = False
+                else:
+                    msg.angular.z = self.kp*self.CONSTANT_ANGULAR_SPEED * angle_to_turn
 
-    def run_loop(self):
+            if self.to_go:
+                if self.go_parallel:
+                    msg.linear.x = self.CONSTANT_LINEAR_SPEED
+                    if self.current_scan[270] > self.max_range:
+                        msg.linear.x = 0.0
+                else:
+                    if not self.target_distance:
+                        dx,dy = self.get_coordinates(self.shortest_distance,self.shortest_angle)
+                        self.target_distance = [dx+self.current_position.x, dy+self.current_position.y]
+                    distance_to_go = math.sqrt((self.target_distance[0]-self.current_position.x)**2+(self.target_distance[1]-self.current_position.y)**2)
+                    print('distance_to_go:',distance_to_go)
 
-        if self.parallel:
-            #goal achieved, just follow the line
-            print('following wall!')
-            self.go_straight()
+                    if (distance_to_go) < 3e-2:
+                        msg.linear.x = 0.0
+                        self.to_go = False
+                        # self.to_turn = True
+                        self.to_turn = True
+                        self.turn_vertical = True
 
-        elif self.turn_square:
-            print('turns parallel')
-            if self.start_time is None:
-                self.start_time = time.time()
-            elapse = time.time()-self.start_time
-            if elapse < 16.708:
-                self.turn_neoto()
-            else:
-                self.parallel = True
-
-        elif self.approach:
-            print('going near the wall')
-            self.approach_wall()
-
-
-        elif (self.x_axis < self.max_range and self.y_axis < self.max_range) or self.found:
-            print('turning vertical')
-            self.turn_vertical()
-            self.found = True
-
-
-        elif (self.x_axis > self.max_range and self.y_axis > self.max_range) or (not self.found and (self.x_axis > self.max_range or self.y_axis > self.max_range)):
-            self.found = False
-            # one of x and y axis is not facing the wall
-            #turn towards wall
-            print('finding wall')
-            self.turn_neoto()
-
-
+                    else:
+                        msg.linear.x = self.kp * self.CONSTANT_LINEAR_SPEED * distance_to_go
+            
+        # print(self.shortest_angle,self.shortest_distance)
+        self.publisher.publish(msg)
 
 
         
 
-
-
 def main(args=None):
-    rclpy.init(args=args)
-    node = WallFollower()
-    rclpy.spin(node)
+    rclpy.init(args=args) #initializing ros ?lookup
+    node = wall_follower() #node instance
+    rclpy.spin(node)#like a while loop, can be done from other things
     rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
+            

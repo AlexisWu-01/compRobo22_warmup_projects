@@ -10,6 +10,20 @@ import math
 
 
 class drive_square(Node):
+    """
+    A class used to make the Neato drive in a square
+
+    ...
+
+    Methods
+    -------
+    send_msg()
+        Loops through the movements and turning necessary to move
+        the Neato in a square. Uses the ros publisher defined
+        in the init to send movement messages to the Neato.
+
+    """
+
     def __init__(self):
         super().__init__("publisher_node") #call parent class
 
@@ -33,7 +47,7 @@ class drive_square(Node):
         self.target_angle = None
         self.to_turn = False
         self.to_go = True
-        
+
 
     def process_bump(self, msg):
         self.bumper_active = (msg.left_front == 1 or \
@@ -61,7 +75,7 @@ class drive_square(Node):
                 cur_y = self.current_position.y
                 for i in range(len(self.deltas)):
                     self.corners[i] = (self.deltas[i][0]+cur_x-self.deltas[pointer][0],self.deltas[i][1]+cur_y-self.deltas[pointer][1])
-                    
+
                 print(self.corners)
                 print(self.current_position.x, self.current_position.y)
                 self.callibration = True
@@ -87,7 +101,7 @@ class drive_square(Node):
                     self.target_angle = None
                     self.callibration = False
 
-                
+
             elif self.to_go:
                 msg.linear.x = self.kp*self.CONSTANT_LINEAR_SPEED*error_distance
                 print('going at',msg.linear.x)
@@ -102,24 +116,23 @@ class drive_square(Node):
                         self.count += 1
                     else:
                         self.count = 0
-                    
+
 
         except:
             pass
         self.publisher.publish(msg)
 
-               
-
-            
-                
-
-        
 
 
-def main(args=None):
-    rclpy.init(args=args) #initializing ros ?lookup
-    node = drive_square() #node instance
-    rclpy.spin(node)#like a while loop, can be done from other things
+
+
+
+
+
+    # tells ros to keep running and looping
+    rclpy.spin(node)
+
+    # allows ros to properly shutdown if code is exited
     rclpy.shutdown()
 
 if __name__ == '__main__':

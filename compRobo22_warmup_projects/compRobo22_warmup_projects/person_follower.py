@@ -13,7 +13,7 @@ import math
 class person_follower(Node):
     def __init__(self):
         super().__init__("publisher_node") #call parent class
-    
+
         timer_period = 0.05
         self.create_subscription(LaserScan,'scan',self.process_scan,10)
         self.create_subscription(Bump, 'bump', self.process_bump, 10)
@@ -31,7 +31,7 @@ class person_follower(Node):
         self.callibration = False
         self.to_turn = False
         self.to_go = True
-    
+
 
     def process_scan(self, msg):
         self.current_scan = msg.ranges
@@ -92,9 +92,9 @@ class person_follower(Node):
         msg.angular.z = self.kp*self.CONSTANT_ANGULAR_SPEED * target_angle
         print(msg.linear.x,msg.angular.z)
         self.publisher.publish(msg)
-            
 
-               
+
+
 
 
 

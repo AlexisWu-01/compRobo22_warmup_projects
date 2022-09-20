@@ -3,6 +3,7 @@ import obstacle_avoider
 import person_follower
 import teleop
 import wall_follower
+import rclpy
 
 
 
@@ -30,6 +31,9 @@ def main():
 
         # exit the python program
         if controls == "M":
+            # shut down ros
+            rclpy.shutdown()
+            # quit the python program
             quit()
 
 

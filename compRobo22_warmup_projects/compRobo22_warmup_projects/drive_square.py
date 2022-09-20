@@ -6,7 +6,7 @@ from geometry_msgs.msg import Twist, Vector3 #for the neato
 # import time
 from neato2_interfaces.msg import Bump
 from nav_msgs.msg import Odometry
-from .angle_helpers import euler_from_quaternion
+from angle_helpers import euler_from_quaternion
 import math
 
 
@@ -131,7 +131,7 @@ class drive_square(Node):
 
 
     # tells ros to keep running and looping
-    rclpy.spin(node)
+    rclpy.spin(Node)
 
     # allows ros to properly shutdown if code is exited
     rclpy.shutdown()

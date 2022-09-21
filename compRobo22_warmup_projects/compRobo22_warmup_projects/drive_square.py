@@ -133,6 +133,9 @@ class drive_square(Node):
         """
         Publishes velocity information in each timer_period
         """
+        if self.bumper_active:
+            #if wall hit, stop ros node.
+            rclpy.shutdown()
         if not self.callibration:
             #callibrates the odom frame (real_world)
             print('start callibration')

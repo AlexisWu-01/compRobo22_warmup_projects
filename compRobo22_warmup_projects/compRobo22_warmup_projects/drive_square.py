@@ -133,72 +133,72 @@ class drive_square(Node):
         """
         Publishes velocity information in each timer_period
         """
-        if self.bumper_active:
+        if not self.bumper_active:
             #if wall hit, stop ros node.
-            rclpy.shutdown()
-        if not self.callibration:
-            #callibrates the odom frame (real_world)
-            print('start callibration')
+           
+            if not self.callibration:
+                #callibrates the odom frame (real_world)
+                print('start callibration')
+                try:
+                    self.callibrate_odometry()
+                except:
+                    pass
+            # starts velocity command, everything defaults to zero.
+            msg = Twist()
             try:
-                self.callibrate_odometry()
+                # displacement in x and y direction in odometry frame.
+                error_x = self.corners[self.count][0] - self.current_position.x
+                error_y = self.corners[self.count][1] - self.current_position.y
+                # distance between current and target position.
+                error_distance = math.sqrt(error_x**2+error_y**2)
+
+                if self.to_turn:
+                    # if state set to turn, runs this script to turn.
+                    if not self.target_angle:
+                        # initialize target_angle just once.
+                        self.target_angle = self.turn_angle + self.current_orientation[2]
+                    angle_to_turn = self.target_angle - self.current_orientation[2]
+                    if angle_to_turn > 5e-2:
+                        # sets angular velocity proportional, but not lower than 0.05 rad/s
+                        msg.angular.z = max(self.kp * angle_to_turn * self.CONSTANT_ANGULAR_SPEED,0.05)
+                        print('turning at',msg.angular.z)
+                        print(angle_to_turn,"to turn")
+                    else:
+                        # if target angle is reached, switch mode and reset callibration and initialization.
+                        msg.angular.z = 0.0
+                        self.to_go = True
+                        self.to_turn = False
+                        self.target_angle = None
+                        self.callibration = False
+
+
+                elif self.to_go:
+                    # if state set to go straight, run this script to go.
+
+                    #when target position is not reached, go proportional speed but with low limits..
+                    msg.linear.x = max(self.kp*self.CONSTANT_LINEAR_SPEED*error_distance, 0.05)
+
+                    print('going at',msg.linear.x)
+                    print(error_distance,"to go")
+
+                    if error_distance < 5e-2:
+                        # when error position is reached, switch mode and reset initilization
+                        msg.linear.x = 0.0
+                        self.to_turn = True
+                        self.to_go = False
+                        self.target_angle = None
+                        print('head to next point')
+                        if self.count < 3:
+                            #update to next corner
+                            self.count += 1
+                        else:
+                            self.count = 0
+
+
             except:
                 pass
-        # starts velocity command, everything defaults to zero.
-        msg = Twist()
-        try:
-            # displacement in x and y direction in odometry frame.
-            error_x = self.corners[self.count][0] - self.current_position.x
-            error_y = self.corners[self.count][1] - self.current_position.y
-            # distance between current and target position.
-            error_distance = math.sqrt(error_x**2+error_y**2)
-
-            if self.to_turn:
-                # if state set to turn, runs this script to turn.
-                if not self.target_angle:
-                    # initialize target_angle just once.
-                    self.target_angle = self.turn_angle + self.current_orientation[2]
-                angle_to_turn = self.target_angle - self.current_orientation[2]
-                if angle_to_turn > 5e-2:
-                    # sets angular velocity proportional, but not lower than 0.05 rad/s
-                    msg.angular.z = max(self.kp * angle_to_turn * self.CONSTANT_ANGULAR_SPEED,0.05)
-                    print('turning at',msg.angular.z)
-                    print(angle_to_turn,"to turn")
-                else:
-                    # if target angle is reached, switch mode and reset callibration and initialization.
-                    msg.angular.z = 0.0
-                    self.to_go = True
-                    self.to_turn = False
-                    self.target_angle = None
-                    self.callibration = False
-
-
-            elif self.to_go:
-                # if state set to go straight, run this script to go.
-
-                #when target position is not reached, go proportional speed but with low limits..
-                msg.linear.x = max(self.kp*self.CONSTANT_LINEAR_SPEED*error_distance, 0.05)
-
-                print('going at',msg.linear.x)
-                print(error_distance,"to go")
-
-                if error_distance < 5e-2:
-                    # when error position is reached, switch mode and reset initilization
-                    msg.linear.x = 0.0
-                    self.to_turn = True
-                    self.to_go = False
-                    self.target_angle = None
-                    print('head to next point')
-                    if self.count < 3:
-                        #update to next corner
-                        self.count += 1
-                    else:
-                        self.count = 0
-
-
-        except:
-            pass
-        #publishes velocity
-        self.publisher.publish(msg)
+            #publishes velocity
+            self.publisher.publish(msg)
 
 
 

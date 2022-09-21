@@ -12,33 +12,51 @@ import math
 
 class drive_square(Node):
     """
-    A class used to make the Neato drive in a square
+    A ros node to make the Neato drive in a square
 
     ...
 
     Methods
     -------
     send_msg()
-        Loops through the movements and turning necessary to move
-        the Neato in a square. Uses the ros publisher defined
-        in the init to send movement messages to the Neato.
+        Loops through the 2 patterns: 
+        go straight and turn 90 degrees as finite states
+        to have the neato drives in a square.
+        Proportional control and odometry with callibration 
+           are applied to have the operation more accurately.
 
     """
 
     def __init__(self):
         super().__init__("publisher_node") #call parent class
 
-        timer_period = 0.05
-        self.create_subscription(Bump, 'bump', self.process_bump, 10)
+        timer_period = 0.05 # the time at which send_msg() is called
+
+        # Subscribe to bumper sensor: the neato would not go any further if it hits an obstacle
+        self.create_subscription(Bump, 'bump', self.process_bump, 10) 
+
+        # Subscribe to position and orientation information from odometry
         self.create_subscription(Odometry,"odom",self.check_odom,10 )
+
+        # Publish msg to neato, which is speed in this publisher
         self.publisher = self.create_publisher(Twist,"cmd_vel",10)#name of topic,"cmd_vel" for moving; queue size
+
+        # Runs send_msg at the defined timer_period
         self.timer = self.create_timer(timer_period,self.send_msg) #runs at timer_period, then call the call back function
 
+        # Constant coefficients for proportional control
         self.kp = 0.6
         self.CONSTANT_ANGULAR_SPEED = 0.5
         self.CONSTANT_LINEAR_SPEED = 0.3
 
+        # Stores position of neato in odometry frame (Odometry.pose.pose.position)
+        # We only care about x, y in this case
         self.current_position = None
+
+        # Stores orientation of neato in odometry frame, centered as neato center
+        # We only care about z in this case, which is [2] in the list
+        self.current_orientation = None
+        # checks if 
         self.bumper_active = False
         self.callibration = False
         self.deltas = [(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)]
@@ -46,8 +64,10 @@ class drive_square(Node):
         self.count = 1 #track which corner to go to next
         self.turn_angle = math.pi/2
         self.target_angle = None
+
+        # state machines to determine neato's move pattern
         self.to_turn = False
-        self.to_go = True
+        self.to_go = True # set as default start state as it makes most sense in drive_square
 
 
     def process_bump(self, msg):
@@ -63,25 +83,27 @@ class drive_square(Node):
                                     msg.pose.pose.orientation.z,
                                     msg.pose.pose.orientation.w)
 
+    def callibrate_odometry(self):
+        if self.count < 1:
+                    pointer = 3
+        else:
+            pointer = self.count - 1
+        cur_x = self.current_position.x
+        cur_y = self.current_position.y
+        for i in range(len(self.deltas)):
+            self.corners[i] = (self.deltas[i][0]+cur_x-self.deltas[pointer][0],self.deltas[i][1]+cur_y-self.deltas[pointer][1])
+
+        self.callibration = True
+
     def send_msg(self):
         if not self.callibration:
             #callibrates the start odom frame (real_world)
             print('start callibration')
             try:
-                if self.count < 1:
-                    pointer = 3
-                else:
-                    pointer = self.count - 1
-                cur_x = self.current_position.x
-                cur_y = self.current_position.y
-                for i in range(len(self.deltas)):
-                    self.corners[i] = (self.deltas[i][0]+cur_x-self.deltas[pointer][0],self.deltas[i][1]+cur_y-self.deltas[pointer][1])
-
-                print(self.corners)
-                print(self.current_position.x, self.current_position.y)
-                self.callibration = True
+                self.callibrate_odometry()
             except:
                 pass
+
         msg = Twist()
         try:
             error_x = self.corners[self.count][0] - self.current_position.x
@@ -128,12 +150,10 @@ class drive_square(Node):
 
 
 
-
-
-    # tells ros to keep running and looping
-    rclpy.spin(Node)
-
-    # allows ros to properly shutdown if code is exited
+def main(args=None):
+    rclpy.init(args=args) #initializing ros ?lookup
+    node = drive_square() #node instance
+    rclpy.spin(node)#like a while loop, can be done from other things
     rclpy.shutdown()
 
 if __name__ == '__main__':

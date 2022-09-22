@@ -51,8 +51,8 @@ class wall_follower(Node):
 
 
         # Constant coefficients for proportional control
-        self.kp = 0.4
-        self.CONSTANT_ANGULAR_SPEED = 0.5
+        self.kp = 0.5
+        self.CONSTANT_ANGULAR_SPEED = 0.3
         self.CONSTANT_LINEAR_SPEED = 0.5
 
         # Stores scan informatino of lidar (LaserScan.ranges)
@@ -86,6 +86,8 @@ class wall_follower(Node):
 
         #target angle in odometry frame
         self.target_angle = None
+
+        self.max_range = float('inf')
 
 
     def process_scan(self, msg):
@@ -214,13 +216,13 @@ class wall_follower(Node):
                         self.to_go = True
                         self.to_turn = False
                     else:
-                        msg.angular.z = min(self.kp*self.CONSTANT_ANGULAR_SPEED * angle_to_turn,0.05)
+                        msg.angular.z = max(self.kp*self.CONSTANT_ANGULAR_SPEED * angle_to_turn,0.03)
 
                 if self.to_go:
                     #goes straight at a certain distance
                     if self.go_parallel:
                         #if state set to go_parallel, follow the wall at a constant speed.
-                        msg.linear.x = self.CONSTANT_LINEAR_SPEED
+                        msg.linear.x = self.CONSTANT_LINEAR_SPEED*self.kp
                         if self.current_scan[270] > self.max_range:
                             # if no wall no the right detected, stop neato.
                             msg.linear.x = 0.0
@@ -241,7 +243,7 @@ class wall_follower(Node):
                             self.turn_vertical = True
 
                         else:
-                            msg.linear.x = min(self.kp * self.CONSTANT_LINEAR_SPEED * distance_to_go,0.05)
+                            msg.linear.x = max(self.kp * self.CONSTANT_LINEAR_SPEED * distance_to_go,0.05)
                 
             self.publisher.publish(msg)
 

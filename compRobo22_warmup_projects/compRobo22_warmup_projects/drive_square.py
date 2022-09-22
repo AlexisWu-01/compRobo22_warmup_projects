@@ -6,7 +6,7 @@ from geometry_msgs.msg import Twist, Vector3 #for the neato
 # import time
 from neato2_interfaces.msg import Bump
 from nav_msgs.msg import Odometry
-from angle_helpers import euler_from_quaternion
+from .angle_helpers import euler_from_quaternion
 import math
 
 
@@ -45,9 +45,9 @@ class drive_square(Node):
         self.timer = self.create_timer(timer_period,self.send_msg) #runs at timer_period, then call the call back function
 
         # Constant coefficients for proportional control
-        self.kp = 0.6
+        self.kp = 0.5
         self.CONSTANT_ANGULAR_SPEED = 0.5
-        self.CONSTANT_LINEAR_SPEED = 0.3
+        self.CONSTANT_LINEAR_SPEED = 0.5
 
         # Stores position of neato in odometry frame (Odometry.pose.pose.position)
         # We only care about x, y in this case
@@ -104,10 +104,12 @@ class drive_square(Node):
 
         """
         self.current_position = msg.pose.pose.position
-        self.current_orientation = euler_from_quaternion(msg.pose.pose.orientation.x,
+        self.current_orientation = list(euler_from_quaternion(msg.pose.pose.orientation.x,
                                     msg.pose.pose.orientation.y,
                                     msg.pose.pose.orientation.z,
-                                    msg.pose.pose.orientation.w)
+                                    msg.pose.pose.orientation.w))
+        if self.current_orientation[2] < 0:
+            self.current_orientation[2] += 2*math.pi
 
     def callibrate_odometry(self):
         """
@@ -158,9 +160,9 @@ class drive_square(Node):
                         # initialize target_angle just once.
                         self.target_angle = self.turn_angle + self.current_orientation[2]
                     angle_to_turn = self.target_angle - self.current_orientation[2]
-                    if angle_to_turn > 5e-2:
+                    if abs(angle_to_turn) > 5e-2:
                         # sets angular velocity proportional, but not lower than 0.05 rad/s
-                        msg.angular.z = max(self.kp * angle_to_turn * self.CONSTANT_ANGULAR_SPEED,0.05)
+                        msg.angular.z = max(self.kp * angle_to_turn * self.CONSTANT_ANGULAR_SPEED,0.03)
                         print('turning at',msg.angular.z)
                         print(angle_to_turn,"to turn")
                     else:
@@ -172,11 +174,13 @@ class drive_square(Node):
                         self.callibration = False
 
 
+
+
                 elif self.to_go:
                     # if state set to go straight, run this script to go.
 
                     #when target position is not reached, go proportional speed but with low limits..
-                    msg.linear.x = max(self.kp*self.CONSTANT_LINEAR_SPEED*error_distance, 0.05)
+                    msg.linear.x = min(self.kp*self.CONSTANT_LINEAR_SPEED*error_distance, self.kp*self.CONSTANT_LINEAR_SPEED*(1.1-error_distance))
 
                     print('going at',msg.linear.x)
                     print(error_distance,"to go")

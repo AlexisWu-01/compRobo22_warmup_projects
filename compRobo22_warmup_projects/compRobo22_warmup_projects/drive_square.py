@@ -110,6 +110,8 @@ class drive_square(Node):
                                     msg.pose.pose.orientation.w))
         if self.current_orientation[2] < 0:
             self.current_orientation[2] += 2*math.pi
+        elif self.current_orientation[2] > 2*math.pi:
+            self.current_orientation[2] -= 2*math.pi
 
     def callibrate_odometry(self):
         """
@@ -159,8 +161,8 @@ class drive_square(Node):
                     if not self.target_angle:
                         # initialize target_angle just once.
                         self.target_angle = self.turn_angle + self.current_orientation[2]
-                    angle_to_turn = self.target_angle - self.current_orientation[2]
-                    if abs(angle_to_turn) > 5e-2:
+                    angle_to_turn = abs(self.target_angle - self.current_orientation[2])
+                    if angle_to_turn > 5e-2:
                         # sets angular velocity proportional, but not lower than 0.05 rad/s
                         msg.angular.z = max(self.kp * angle_to_turn * self.CONSTANT_ANGULAR_SPEED,0.03)
                         print('turning at',msg.angular.z)

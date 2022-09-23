@@ -22,7 +22,11 @@ setup(
         'console_scripts': [
             'drive_square = compRobo22_warmup_projects.drive_square:main',
             'wall_follower = compRobo22_warmup_projects.wall_follower:main',
-            'person_follower = compRobo22_warmup_projects.person_follower:main'
+            'person_follower = compRobo22_warmup_projects.person_follower:main',
+            'obstacle_avoider = compRobo22_warmup_projects.obstacale_avoider:main',
+            'finite_state_controller = compRobo22_warmup_projects.finite_state_controller:main'
+
+            
 
         ],
     },

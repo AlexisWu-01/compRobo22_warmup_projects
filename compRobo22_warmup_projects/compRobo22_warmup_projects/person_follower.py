@@ -11,59 +11,125 @@ import math
 
 
 class person_follower(Node):
+    """
+    A ros node to make the Neato find a person/ obstacle and follows its path.
+
+    ...
+
+    Methods
+    -------
+    Finds the center of obstacle coordinates (like center of mass)
+    then turns and go towards the target position.
+
+    """
     def __init__(self):
         super().__init__("publisher_node") #call parent class
 
-        timer_period = 0.05
+        timer_period = 0.05 # the time at which send_msg() is called
+
+        #Subscribe to laser scan: gets a list of distance from 360 degree laser scan
         self.create_subscription(LaserScan,'scan',self.process_scan,10)
+
+        # Subscribe to bumper sensor: the neato would not go any further if it hits an obstacle
         self.create_subscription(Bump, 'bump', self.process_bump, 10)
+
+        # Subscribe to position information from odometry
         self.create_subscription(Odometry,"odom",self.check_odom,10 )
-        self.publisher = self.create_publisher(Twist,"cmd_vel",10)#name of topic,"cmd_vel" for moving; queue size
-        self.timer = self.create_timer(timer_period,self.send_msg) #runs at timer_period, then call the call back function
-        self.current_scan = [1.0]
+
+        # Publish msg to neato, which is speed in this publisher
+        self.publisher = self.create_publisher(Twist,"cmd_vel",10)
+
+        # Runs send_msg at the defined timer_period
+        self.timer = self.create_timer(timer_period,self.send_msg)
+
+        # Constant coefficients for proportional control
         self.kp = 0.6
         self.CONSTANT_ANGULAR_SPEED = 0.8
         self.CONSTANT_LINEAR_SPEED = 0.3
 
-        self.max_range = float('inf')
-        self.current_position = None
-        self.bumper_active = False
-        self.callibration = False
-        self.to_turn = False
-        self.to_go = True
+        # Stores scan informatino of lidar (LaserScan.ranges)
+        # From index 0 to 360, 0 is at x axis and 90 is at y axis
+        self.current_scan = [1.0]   
 
+
+
+        # Stores position of neato in odometry frame (Odometry.pose.pose.position)
+        # We only care about x, y in this case
+        self.current_position = None     
+        
+        # checks if the neato is bumping into something
+        self.bumper_active = False
 
     def process_scan(self, msg):
+        """
+        Subscribes to LaserScan
+        Get a series of distance from lidar.
+
+        Vars:
+            current_scan: a list of length 360, each is a distance
+                @ angle (index)
+            max_range: longest effective distance.
+                If measurement is bigger than this, count as no object detected.
+        """
         self.current_scan = msg.ranges
         self.max_range = msg.range_max
-        # print(self.current_scan)
 
     def process_bump(self, msg):
+        """Subcribes to bump msg:
+            If any of the bumper sensor is True,
+                set the bumper_active to True.
+    
+        """
         self.bumper_active = (msg.left_front == 1 or \
                               msg.left_side == 1 or \
                               msg.right_front ==1 or \
                               msg.right_side == 1)
 
     def check_odom (self,msg):
+        """
+        Subcribes to neato location and orientation
+            in odometry frame.
+
+        Vars:
+            current_position: position in neato frame. 
+                calls through self.current_position.x and self.current_position.y.
+        """
         self.current_position = msg.pose.pose.position
-        self.current_orientation = euler_from_quaternion(msg.pose.pose.orientation.x,
-                                    msg.pose.pose.orientation.y,
-                                    msg.pose.pose.orientation.z,
-                                    msg.pose.pose.orientation.w)
 
     def get_coordinates(self,distance,index):
+        """
+        Converts from polar coordinate to cartesian coordinate,
+            in respect to centered at neato.
+
+        Args:
+            index(int): angle in degree, represented as the index in laserscan list.
+            distance (float):  distance in meter
+
+        Returns:
+            delta_x: displacement in x, in odometry
+            delta_y: displacement in y, in odometry
+        """
         index = math.radians(index)
         delta_x = distance*math.cos(index)
         delta_y = distance*math.sin(index)
         return delta_x,delta_y
 
     def calculate_center(self):
+        """
+        Calcultes the center of obstacles in respect to neato
+            by finding average x, y from valid positions.
+
+        Returns:
+            sum_delta_x/cnt: average displacement x in respect to neato
+            sum_delta_y/cnt: average displacement y in respect to neato
+        """
         sum_delta_x = 0
         sum_delta_y = 0
         n = len(self.current_scan)
         cnt = 0
         for i in range(n):
             if  0 < self.current_scan[i] < self.max_range:
+                # only valid scan is calculated
                 dx,dy = self.get_coordinates(self.current_scan[i],i)
                 sum_delta_x += dx
                 sum_delta_y += dy
@@ -72,10 +138,11 @@ class person_follower(Node):
             return 0,0
         return sum_delta_x/cnt, sum_delta_y/cnt
 
-
-
-
     def send_msg(self):
+        """
+        Finds shortest distance from valid lidar scan and angle at that distance.
+        
+        """
         msg = Twist()
         dx,dy = self.calculate_center()
         if dx == 0:
@@ -83,14 +150,12 @@ class person_follower(Node):
         else:
             target_angle = math.atan(dy/dx)
         target_distance = math.sqrt(dy**2 + dx**2)
-        # print(dx,dy)
-        # print(target_angle,target_distance)
         if dx < 0:
+            # If the obstacle is behind us, turn first without going
             msg.linear.x = 0.0
         else:
-            msg.linear.x = self.kp * self.CONSTANT_LINEAR_SPEED * target_distance
-        msg.angular.z = self.kp*self.CONSTANT_ANGULAR_SPEED * target_angle
-        print(msg.linear.x,msg.angular.z)
+            msg.linear.x = min(self.kp * self.CONSTANT_LINEAR_SPEED * target_distance,0.05)
+        msg.angular.z = min(self.kp*self.CONSTANT_ANGULAR_SPEED * target_angle, 0.05)
         self.publisher.publish(msg)
 
 

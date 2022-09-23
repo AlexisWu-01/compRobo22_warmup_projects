@@ -20,6 +20,18 @@ class teleop(Node):
     listen()
         Reads keyboard input from the terminal, prints the last input,
         and returns the input converted to uppercase.
+    run_loop()
+        Publishes the key presses and moves the robot based on some inputs.
+    turn_left()
+        Turns the neato counter clockwise.
+    turn_right()
+        Turns the neato clockwise.
+    neato_stop()
+        stops the neato from moving.
+    neato_forward()
+        Moves the neato forward.
+    neato_backward()
+        Moves the neato backward.
     """
 
     def __init__(self):
@@ -51,7 +63,13 @@ class teleop(Node):
         self.linear_velocity = .25
 
     def run_loop(self):
+        """
+        Runs all of the key publishing and basic movement commands.
 
+        Args:
+
+        Returns:
+        """
         # record the keypress
         key_press = self.listen()
 
@@ -182,10 +200,10 @@ class teleop(Node):
 
         # create the initial loading screen
         print("_____Controls_____\n" +
-               "        ^         |U Person Follower  \n" +
-               "  <\ Q  W  E />   |I Wall Follower    \n" +
-               "    X  A D  X     |O Obstacle Avoider \n" +
-               "        S         |P Drive Square     \n" +
+               "        ^         |                   \n" +
+               "  <\ Q  W  E />   |                   \n" +
+               "    X  A D  X     |                   \n" +
+               "        S         |                   \n" +
                "        v         |M Escape             ")
 
     def listen(self):

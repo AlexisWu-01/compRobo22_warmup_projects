@@ -1,3 +1,4 @@
+from ctypes.wintypes import MSG
 from turtle import position
 import rclpy #importing ros
 from rclpy.node import Node
@@ -19,10 +20,10 @@ class drive_square(Node):
     Methods
     -------
     send_msg()
-        Loops through the 2 patterns: 
+        Loops through the 2 patterns:
         go straight and turn 90 degrees as finite states
         to have the neato drives in a square.
-        Proportional control and odometry with callibration 
+        Proportional control and odometry with callibration
            are applied to have the operation more accurately.
 
     """
@@ -33,16 +34,22 @@ class drive_square(Node):
         timer_period = 0.05 # the time at which send_msg() is called
 
         # Subscribe to bumper sensor: the neato would not go any further if it hits an obstacle
-        self.create_subscription(Bump, 'bump', self.process_bump, 10) 
+        self.create_subscription(Bump, 'bump', self.process_bump, 10)
 
         # Subscribe to position and orientation information from odometry
         self.create_subscription(Odometry,"odom",self.check_odom,10 )
+
+        # Subscribe to key presses
+        self.create_subscription(String, 'Keys', self.teleop, 10)
 
         # Publish msg to neato, which is speed in this publisher
         self.publisher = self.create_publisher(Twist,"cmd_vel",10)#name of topic,"cmd_vel" for moving; queue size
 
         # Runs send_msg at the defined timer_period
         self.timer = self.create_timer(timer_period,self.send_msg) #runs at timer_period, then call the call back function
+
+        # Create a place to store key presses
+        self.key_press = None
 
         # Constant coefficients for proportional control
         self.kp = 0.5
@@ -66,7 +73,7 @@ class drive_square(Node):
         #position of neato in odometry frame
         self.corners = [None,None,None,None]
         #tracks which corner to go to next
-        self.count = 1 
+        self.count = 1
 
         # turn 90 degree at each corner, in radians
         self.turn_angle = math.pi/2
@@ -77,12 +84,21 @@ class drive_square(Node):
         self.to_turn = False
         self.to_go = True # set as default start state as it makes most sense in drive_square
 
+    def teleop(self, msg):
+        """
+        Subcribes to key press message, was not used in final implementation
+
+        """
+        # msg can be named everything, ros will feed into it the incoming
+        # data from the subscriber
+        self.key_press = msg.data
 
     def process_bump(self, msg):
-        """Subcribes to bump msg:
+        """
+        Subcribes to bump msg:
             If any of the bumper sensor is True,
                 set the bumper_active to True.
-    
+
         """
         self.bumper_active = (msg.left_front == 1 or \
                               msg.left_side == 1 or \
@@ -96,7 +112,7 @@ class drive_square(Node):
             in odometry frame.
 
         Vars:
-            current_position: position in neato frame. 
+            current_position: position in neato frame.
                 calls through self.current_position.x and self.current_position.y.
             current_orientation: orientation in neato frame.
                 transformed to neato center in odometry frame.
@@ -137,9 +153,11 @@ class drive_square(Node):
         """
         Publishes velocity information in each timer_period
         """
+
+
         if not self.bumper_active:
             #if wall hit, stop ros node.
-           
+
             if not self.callibration:
                 #callibrates the odom frame (real_world)
                 print('start callibration')

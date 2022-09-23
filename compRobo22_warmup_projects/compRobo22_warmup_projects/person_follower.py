@@ -49,14 +49,14 @@ class person_follower(Node):
 
         # Stores scan informatino of lidar (LaserScan.ranges)
         # From index 0 to 360, 0 is at x axis and 90 is at y axis
-        self.current_scan = [1.0]   
+        self.current_scan = [1.0]
 
 
 
         # Stores position of neato in odometry frame (Odometry.pose.pose.position)
         # We only care about x, y in this case
-        self.current_position = None     
-        
+        self.current_position = None
+
         # checks if the neato is bumping into something
         self.bumper_active = False
 
@@ -78,7 +78,7 @@ class person_follower(Node):
         """Subcribes to bump msg:
             If any of the bumper sensor is True,
                 set the bumper_active to True.
-    
+
         """
         self.bumper_active = (msg.left_front == 1 or \
                               msg.left_side == 1 or \
@@ -141,7 +141,7 @@ class person_follower(Node):
     def send_msg(self):
         """
         Finds shortest distance from valid lidar scan and angle at that distance.
-        
+
         """
         msg = Twist()
         dx,dy = self.calculate_center()

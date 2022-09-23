@@ -24,6 +24,7 @@ setup(
             'wall_follower = compRobo22_warmup_projects.wall_follower:main',
             'person_follower = compRobo22_warmup_projects.person_follower:main',
             'obstacle_avoider = compRobo22_warmup_projects.obstacale_avoider:main',
+            'teleop = compRobo22_warmup_projects.teleop:main',
             'finite_state_controller = compRobo22_warmup_projects.finite_state_controller:main'
 
             

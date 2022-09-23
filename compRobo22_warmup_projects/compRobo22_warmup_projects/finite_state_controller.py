@@ -58,12 +58,12 @@ class person_follower(Node):
 
         # Stores scan informatino of lidar (LaserScan.ranges)
         # From index 0 to 360, 0 is at x axis and 90 is at y axis
-        self.current_scan = [1.0]   
+        self.current_scan = [1.0]
 
         # Stores position of neato in odometry frame (Odometry.pose.pose.position)
         # We only care about x, y in this case
-        self.current_position = None     
-        
+        self.current_position = None
+
         # checks if the neato is bumping into something
         self.bumper_active = False
 

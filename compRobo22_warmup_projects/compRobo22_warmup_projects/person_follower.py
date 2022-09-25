@@ -45,13 +45,13 @@ class person_follower(Node):
         # Constant coefficients for proportional control
         self.kp = 0.6
         self.CONSTANT_ANGULAR_SPEED = 0.8
-        self.CONSTANT_LINEAR_SPEED = 0.3
+        self.CONSTANT_LINEAR_SPEED = 0.5
+
+        self.max_range = float('inf')
 
         # Stores scan informatino of lidar (LaserScan.ranges)
         # From index 0 to 360, 0 is at x axis and 90 is at y axis
         self.current_scan = [1.0]   
-
-
 
         # Stores position of neato in odometry frame (Odometry.pose.pose.position)
         # We only care about x, y in this case
@@ -149,18 +149,18 @@ class person_follower(Node):
             target_angle = 0
         else:
             target_angle = math.atan(dy/dx)
-        target_distance = math.sqrt(dy**2 + dx**2)
+        target_distance = abs(math.sqrt(dy**2 + dx**2)-0.2)
         if dx < 0:
             # If the obstacle is behind us, turn first without going
             msg.linear.x = 0.0
+            msg.angular.z = 0.5
+            
         else:
-            msg.linear.x = min(self.kp * self.CONSTANT_LINEAR_SPEED * target_distance,0.05)
-        msg.angular.z = min(self.kp*self.CONSTANT_ANGULAR_SPEED * target_angle, 0.05)
+            msg.linear.x = max(self.kp * self.CONSTANT_LINEAR_SPEED * target_distance,0.05)
+            msg.angular.z = max(self.kp*self.CONSTANT_ANGULAR_SPEED * target_angle, 0.05)
+        print(msg.linear.x, msg.angular.z)
+
         self.publisher.publish(msg)
-
-
-
-
 
 
 def main(args=None):
